@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/Aetheris_Planeta_de_Part_culas.html"
+    }
+  ]
+}

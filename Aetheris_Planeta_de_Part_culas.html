@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Aetheris: Planeta de Partículas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -59,6 +59,18 @@
             display: inline;
         }
         @media (max-width: 768px) {
+            body {
+                min-height: 100dvh;
+            }
+            #webgl-canvas {
+                height: 100dvh;
+            }
+            body > div.absolute {
+                padding-top: max(12px, env(safe-area-inset-top));
+                padding-right: max(12px, env(safe-area-inset-right));
+                padding-bottom: max(8px, env(safe-area-inset-bottom));
+                padding-left: max(12px, env(safe-area-inset-left));
+            }
             #camera-status {
                 min-width: 30px;
                 width: 30px;
@@ -81,6 +93,23 @@
             main {
                 align-items: center;
             }
+            #gesture-panel {
+                position: absolute;
+                right: max(12px, env(safe-area-inset-right));
+                top: max(78px, calc(env(safe-area-inset-top) + 66px));
+                left: auto;
+                width: min(58%, 230px);
+                z-index: 30;
+            }
+            #webcam-panel {
+                width: min(42%, 180px);
+                height: 112px;
+                align-self: flex-end;
+                margin-bottom: 20px;
+            }
+            footer {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
         }
         @media (min-width: 769px) {
             .desktop-only-gesture {
@@ -89,12 +118,12 @@
         }
         @media (max-width: 420px) {
             #gesture-panel {
-                width: 52%;
+                width: 58%;
                 padding: 0.65rem;
             }
             #webcam-panel {
-                width: 42%;
-                height: 115px;
+                width: 40%;
+                height: 108px;
             }
             #gesture-panel-content p {
                 overflow-wrap: anywhere;
@@ -115,18 +144,6 @@
                 overflow-y: auto;
             }
         }
-        @media (max-width: 768px) {
-            #gesture-panel {
-            position: absolute;
-            top: 41px;
-            right: 12px;
-            left: auto;
-            width: 25%;
-            align-self: auto;
-           z-index: 3;
-           }
-        }
-
     </style>
 </head>
 <body class="text-white select-none">
@@ -262,6 +279,8 @@
         const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        camera.fov = window.innerWidth <= 768 ? 68 : 60;
+        camera.updateProjectionMatrix();
 
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
         scene.add(ambientLight);
@@ -631,6 +650,7 @@
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
+            camera.fov = window.innerWidth <= 768 ? 68 : 60;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
             if (window.innerWidth <= 768) {
@@ -641,6 +661,47 @@
                 uiStatusText.textContent = "Error: Sin acceso a Webcam";
             }
         });
+
+        let activePointerId = null;
+        let previousPointerX = 0;
+        let previousPointerY = 0;
+
+        canvas3D.addEventListener('pointerdown', (event) => {
+            activePointerId = event.pointerId;
+            previousPointerX = event.clientX;
+            previousPointerY = event.clientY;
+            canvas3D.setPointerCapture(event.pointerId);
+        });
+
+        canvas3D.addEventListener('pointermove', (event) => {
+            if (activePointerId !== event.pointerId) return;
+
+            const deltaX = event.clientX - previousPointerX;
+            const deltaY = event.clientY - previousPointerY;
+            cameraTheta -= deltaX * 0.008;
+            cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi + deltaY * 0.008));
+
+            previousPointerX = event.clientX;
+            previousPointerY = event.clientY;
+        });
+
+        canvas3D.addEventListener('pointerup', (event) => {
+            if (activePointerId === event.pointerId) {
+                activePointerId = null;
+            }
+        });
+
+        canvas3D.addEventListener('pointercancel', () => {
+            activePointerId = null;
+        });
+
+        canvas3D.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            targetCameraRadius = Math.max(
+                CAMERA_MIN_DISTANCE,
+                Math.min(CAMERA_MAX_DISTANCE, targetCameraRadius + event.deltaY * 0.035)
+            );
+        }, { passive: false });
     </script>
 </body>
 </html>
